@@ -8,5 +8,4 @@ import org.immutables.value.Value.Immutable;
 public interface ConversationResponseMetricIF {
   long getConversationId();
   double getAverageResponseMs();
-  double inquiryToResponseRatio();
 }
