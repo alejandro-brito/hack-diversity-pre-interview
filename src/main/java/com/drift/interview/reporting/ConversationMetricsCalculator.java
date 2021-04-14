@@ -3,6 +3,8 @@ package com.drift.interview.reporting;
 import com.drift.interview.model.Conversation;
 import com.drift.interview.model.ConversationResponseMetric;
 import com.drift.interview.model.Message;
+
+import java.sql.SQLOutput;
 import java.util.List;
 
 public class ConversationMetricsCalculator {
@@ -12,9 +14,9 @@ public class ConversationMetricsCalculator {
    *          Implemented by Alejandro Brito on 4/12/21
    * Returns a ConversationResponseMetric object which can be used to power data visualizations on the front end.
    *
-   * So far, we are returning two metrics: averageResponseTime & inquiryToResponseRatio
+   * So far, we are calculating two metrics: averageResponseTime & inquiryToResponseRatio
    *  1. averageResponseTime: returns average of response times between end user and team member in this Conversation. If
-   *  end user sends messages in a sequence, only calculate response time from their first message
+   *  end user sends messages in a sequence, only calculate response time from their first message.
    *
    *  2. inquiryToResponseRatio: calculates the ratio of questions an end user has to how many responses a Team Member has.
    *  We consider a message a question if the message the end user sent ends with a '?'. This can be insightful for the following:
@@ -24,6 +26,7 @@ public class ConversationMetricsCalculator {
    *    should not be a cause for concern
    *    -if ratio < 1, it means that team member provided more responses than the end user had questions. This also shouldn't
    *    be a cause for concern
+   *    -if ratio = 0, it means end user had 0 inquiries. Remember we count inquiries as end user messages ending with '?'
    *
    *    NOTE: the inquiryRatio has some flaws. End Users might not always end their questions with a '?'. A Team Member's
    *    response counts as 1 (even if they provide more than 1 message) which may produce a high ratio even though all the
@@ -33,11 +36,15 @@ public class ConversationMetricsCalculator {
    */
   ConversationResponseMetric calculateAverageResponseTime(Conversation conversation) {
     List<Message> messages = conversation.getMessages();
+
+    // normally, we would check conversation object for nullness. However, the Conversation builder assures that the
+    // object being passed is not null
+
     double averageResponseTime = 0;
+    double inquiryToResponseRatio = 0;
     double endUserTime = 0;
     double teamMemberTime = 0;
     int totalConversations = 0;
-    double inquiryToResponseRatio = 0;
 
     for(int i = 0; i < messages.size(); i++) {
       // check if current message is from an end user. If so, start tracking how long until a team member writes a response
@@ -69,12 +76,15 @@ public class ConversationMetricsCalculator {
         totalConversations++;
       }
     }
+      // calculate total average response time by adding the response time of all the conversations and dividing by how many
+      // total conversations there was. If team member never responded in this chat, we can expect this to be a negative number
+      averageResponseTime /=  totalConversations;
+      // calculate inquiryToResponseRatio by dividing total number of inquiry messages by team member responses
+      inquiryToResponseRatio /= totalConversations;
 
-    // calculate total average response time by adding the response time of all the conversations and dividing by how many
-    // total conversations there was
-    averageResponseTime /=  totalConversations;
-    // calculate inquiryToResponseRatio by dividing total number of inquiry messages by team member responses
-    inquiryToResponseRatio /= totalConversations;
+    // At some point, this inquiryToResponseRatio should be implemented correctly and returned in the ConversationResponseMetric
+    // JSON. For now, we will just print it to the console
+    System.out.println("inquiryToResponseRatio for conversation " + conversation.getId() + ": " + inquiryToResponseRatio);
 
     return ConversationResponseMetric.builder()
         .setConversationId(conversation.getId())
